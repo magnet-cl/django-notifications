@@ -19,7 +19,7 @@ else:
     from django.http import HttpResponse
     def date_handler(obj):
         return obj.isoformat() if hasattr(obj, 'isoformat') else obj
-    
+
     def JsonResponse(data):
         return HttpResponse(json.dumps(data, default=date_handler), content_type="application/json")
 
@@ -117,26 +117,38 @@ def delete(request, slug=None):
 
     return redirect('notifications:all')
 
+
 def live_unread_notification_count(request):
-    from random import randint
+    if request.user.is_authenticated():
+        unread_count = request.user.notifications.unread().count()
+    else:
+        unread_count = 0
+
     data = {
-       'unread_count':request.user.notifications.unread().count(),
+        'unread_count': unread_count
     }
     return JsonResponse(data)
 
+
 def live_unread_notification_list(request):
-    
+
     try:
         num_to_fetch = request.GET.get('max',5) #If they don't specify, make it 5.
         num_to_fetch = int(num_to_fetch)
         num_to_fetch = max(1,num_to_fetch) # if num_to_fetch is negative, force at least one fetched notifications
-        num_to_fetch = min(num_to_fetch,100) # put a sane ceiling on the number retrievable 
+        num_to_fetch = min(num_to_fetch,100) # put a sane ceiling on the number retrievable
     except ValueError:
         num_to_fetch = 5 # If casting to an int fails, just make it 5.
 
+    if request.user.is_authenticated():
+        unread_count = request.user.notifications.unread().count()
+        unread_list = [model_to_dict(n) for n in request.user.notifications.unread()[0:num_to_fetch]]
+    else:
+        unread_count = 0
+        unread_list = []
+
     data = {
-       'unread_count':request.user.notifications.unread().count(),
-       'unread_list':[model_to_dict(n) for n in request.user.notifications.unread()[0:num_to_fetch]]
+        'unread_count': unread_count,
+        'unread_list': unread_list,
     }
     return JsonResponse(data)
-
